@@ -2,9 +2,13 @@
 
 > A structured capture tool for developers who think faster than they ship.
 
-![Idea Journal screenshot](docs/screenshot.png)
+![Idea Journal dashboard](docs/screenshot-v1-dashboard.png)
+*Dashboard — one idea logged, shipped, with sidebar filtering and search*
 
-Built for the moment creative brilliance strikes mid-dev-cycle — log it, park it, come back to it. Every idea gets three fields that convert raw inspiration into something actionable, a status lifecycle to track where it lives in your pipeline, and a cooldown score to separate real ideas from temporary excitement.
+![Idea Journal modal](docs/screenshot-v1-modal.png)
+*Detail modal — three-field capture (Hook / Technical Seed / Minimum Footprint), status lifecycle, tags, cooldown score*
+
+Built for the moment creative brilliance strikes mid-dev-cycle — log it, park it, come back to it. Every idea gets three fields that convert raw inspiration into something actionable, a status lifecycle to track where it lives in your pipeline, a cooldown score to separate real ideas from temporary excitement, and a FastAPI backend for AI-driven capture.
 
 ---
 
@@ -48,22 +52,27 @@ RAW → PARKED → ACTIVE → SHIPPED → ARCHIVED
 - Status lifecycle with sidebar filtering
 - Free-form tags with full-text search
 - Cooldown score (1–10) for two-week reviews
-- Live autosave to `localStorage` on every keystroke
+- Live autosave on every keystroke
 - Dark terminal aesthetic — IBM Plex Mono + Space Mono
+- **FastAPI backend with JSON file persistence** (replaces browser-only localStorage)
+- **Hermes agent skill** — log ideas directly from chat via the API
 
 ---
 
 ## Stack
 
-- Vite + React
+- Vite + React 19
 - CSS Modules
 - FastAPI + Python (backend sidecar)
-- JSON file persistence (replaces localStorage)
+- JSON file persistence
 - lucide-react icons
+- Hermes agent skill for AI-driven capture
 
 ---
 
 ## Getting Started
+
+### Frontend
 
 ```bash
 git clone git@github.com:hellasleeper108/Idea-Journal.git
@@ -72,7 +81,7 @@ npm install
 npm run dev        # frontend on :5173
 ```
 
-### Backend setup (required for data persistence)
+### Backend (required for data persistence)
 
 ```bash
 cd backend
@@ -87,12 +96,42 @@ Then open `http://localhost:5173`. The frontend proxies `/api/*` to the backend.
 
 ---
 
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Health check |
+| `GET` | `/ideas` | List ideas (`?status=`, `?tag=`, `?search=`) |
+| `GET` | `/ideas/{id}` | Get single idea |
+| `POST` | `/ideas` | Create new idea |
+| `PATCH` | `/ideas/{id}` | Partial update |
+| `DELETE` | `/ideas/{id}` | Delete idea |
+| `GET` | `/tags` | All unique tags |
+
+### Example: log an idea via curl
+
+```bash
+curl -s -X POST http://localhost:8000/ideas \
+  -H "Content-Type: application/json" \
+  -d '{
+    "hook": "Your core insight here",
+    "seed": "The technical approach",
+    "footprint": "What v0.1 looks like",
+    "tags": ["tag1", "tag2"],
+    "status": "raw"
+  }'
+```
+
+---
+
 ## Roadmap
 
 | Version | Status | Description |
-|---|---|---|
+|---------|--------|-------------|
 | v0.1 | ✅ shipped | Core journal — capture, status, tags, cooldown score, persistence |
 | v1.0 | ✅ shipped | Hermes agent integration — FastAPI sidecar, JSON file backend, full CRUD API |
+| v1.1 | 🔲 planned | LocalStorage → API data migration, automated test suite, dark/light theme toggle |
+| v2.0 | 🔲 planned | Multi-user auth, PostgreSQL backend, real-time sync |
 
 ---
 

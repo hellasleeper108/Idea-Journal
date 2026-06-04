@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "id": "idea_1780608982282_wzbvt",
+    "createdAt": "2026-06-04T21:36:22.282483+00:00",
+    "updatedAt": "2026-06-04T21:36:22.282491+00:00",
+    "status": "shipped",
+    "hook": "A structured capture tool for developers who think faster than they ship",
+    "seed": "Vite + React 19 frontend with FastAPI sidecar — JSON file backend replaces localStorage, Hermes agent skill for AI-driven capture",
+    "footprint": "v0.1: core journal (status lifecycle, tags, cooldown score, search, dark terminal UI). v1.0: FastAPI backend, Vite proxy, Hermes skill integration",
+    "tags": [
+      "meta",
+      "shipped",
+      "hermes"
+    ],
+    "score": null
+  }
+]
