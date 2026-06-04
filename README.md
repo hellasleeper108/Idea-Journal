@@ -1,4 +1,4 @@
-# IDEA_JOURNAL
+# IDEA JOURNAL
 
 > A structured capture tool for developers who think faster than they ship.
 
