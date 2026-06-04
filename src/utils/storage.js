@@ -1,24 +1,4 @@
-const STORAGE_KEY = 'idea-journal-v1';
-
-export const loadIdeas = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-};
-
-export const saveIdeas = (ideas) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(ideas));
-  } catch (e) {
-    console.error('Failed to save ideas:', e);
-  }
-};
-
-export const generateId = () =>
-  `idea_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+/* Constants shared between components — storage moved to backend */
 
 export const STATUS_OPTIONS = [
   { value: 'raw',      label: 'RAW',      color: 'var(--text-dim)',    bg: 'rgba(74,74,70,0.15)' },

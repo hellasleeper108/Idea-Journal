@@ -33,8 +33,8 @@ export default function App() {
     });
   }, [ideas, filter, search]);
 
-  const handleNew = () => {
-    const id = addIdea({ hook: '', seed: '', footprint: '', tags: [], status: 'raw' });
+  const handleNew = async () => {
+    const id = await addIdea({ hook: '', seed: '', footprint: '', tags: [], status: 'raw' });
     setActiveId(id);
   };
 

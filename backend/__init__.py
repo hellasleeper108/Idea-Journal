@@ -1,0 +1,1 @@
+"""Idea Journal backend package."""
