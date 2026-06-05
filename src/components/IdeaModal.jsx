@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Trash2, Tag, Plus } from 'lucide-react';
-import { STATUS_OPTIONS, getStatusMeta } from '../utils/storage';
+import { X, Trash2, Tag, Terminal, Sparkles, Bot } from 'lucide-react';
+import { claudeApi, codexApi } from '../utils/api';
+import { STATUS_OPTIONS } from '../utils/storage';
 import { formatTimestamp } from '../utils/time';
 import styles from './IdeaModal.module.css';
 
@@ -25,9 +26,28 @@ const FIELDS = [
   },
 ];
 
+const AGENTS = {
+  claude: {
+    label: 'CLAUDE',
+    prefix: '/claude',
+    placeholder: '/claude expand, /claude scaffold, /claude score',
+    api: claudeApi,
+  },
+  codex: {
+    label: 'CODEX',
+    prefix: '/codex',
+    placeholder: '/codex plan, /codex scaffold, /codex expand',
+    api: codexApi,
+  },
+};
+
 export default function IdeaModal({ idea, onClose, onUpdate, onDelete }) {
   const [form, setForm] = useState({ ...idea });
   const [tagInput, setTagInput] = useState('');
+  const [agent, setAgent] = useState('codex');
+  const [commandInput, setCommandInput] = useState('');
+  const [commandOutput, setCommandOutput] = useState('');
+  const [commandState, setCommandState] = useState('idle');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const overlayRef = useRef();
   const firstFieldRef = useRef();
@@ -37,7 +57,7 @@ export default function IdeaModal({ idea, onClose, onUpdate, onDelete }) {
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, []);
+  }, [onClose]);
 
   const set = (key, val) => {
     const updated = { ...form, [key]: val };
@@ -76,7 +96,55 @@ export default function IdeaModal({ idea, onClose, onUpdate, onDelete }) {
     }
   };
 
-  const status = getStatusMeta(form.status);
+  const runAgentCommand = async () => {
+    const command = commandInput.trim();
+    if (!command || commandState === 'running') return;
+
+    const activeAgent = AGENTS[agent];
+    const normalized = command.startsWith(activeAgent.prefix)
+      ? command
+      : `${activeAgent.prefix} ${command}`;
+    const instructionFor = (verb) => normalized.replace(`${activeAgent.prefix} ${verb}`, '').trim();
+    setCommandState('running');
+    setCommandOutput('');
+
+    try {
+      if (normalized.startsWith(`${activeAgent.prefix} expand`)) {
+        const result = await activeAgent.api.expand(idea.id, instructionFor('expand'));
+        setForm(result.idea);
+        onUpdate(idea.id, result.idea);
+        setCommandOutput(result.rationale || result.raw || 'Expanded idea fields.');
+      } else if (normalized.startsWith(`${activeAgent.prefix} scaffold`)) {
+        const result = await activeAgent.api.scaffold(idea.id, instructionFor('scaffold'));
+        setCommandOutput(result.brief);
+      } else if (agent === 'codex' && normalized.startsWith('/codex plan')) {
+        const result = await codexApi.plan(idea.id, instructionFor('plan'));
+        setCommandOutput(result.plan);
+      } else {
+        await activeAgent.api.command(idea.id, normalized, (_chunk, output) => {
+          setCommandOutput(output);
+        });
+      }
+      setCommandInput('');
+      setCommandState('done');
+    } catch (err) {
+      setCommandOutput(err.message);
+      setCommandState('error');
+    }
+  };
+
+  const handleCommandKey = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      runAgentCommand();
+    }
+  };
+
+  const setAgentMode = (nextAgent) => {
+    setAgent(nextAgent);
+    setCommandOutput('');
+    setCommandState('idle');
+  };
 
   return (
     <div className={styles.overlay} ref={overlayRef} onClick={handleOverlayClick}>
@@ -134,6 +202,49 @@ export default function IdeaModal({ idea, onClose, onUpdate, onDelete }) {
               />
             </div>
           ))}
+        </div>
+
+        <div className={styles.commandPanel}>
+          <div className={styles.commandHeader}>
+            <label className={styles.fieldLabel}>
+              <Terminal size={10} /> AGENT COMMAND
+            </label>
+            <div className={styles.agentToggle} aria-label="Agent mode">
+              {Object.entries(AGENTS).map(([key, config]) => (
+                <button
+                  key={key}
+                  className={`${styles.agentBtn} ${agent === key ? styles.agentActive : ''}`}
+                  onClick={() => setAgentMode(key)}
+                  type="button"
+                >
+                  {key === 'codex' ? <Bot size={11} /> : <Sparkles size={11} />}
+                  {config.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className={styles.commandRow}>
+            <input
+              className={styles.commandInput}
+              value={commandInput}
+              onChange={e => setCommandInput(e.target.value)}
+              onKeyDown={handleCommandKey}
+              placeholder={AGENTS[agent].placeholder}
+            />
+            <button
+              className={styles.commandBtn}
+              onClick={runAgentCommand}
+              disabled={commandState === 'running'}
+              title={`Run ${AGENTS[agent].label} command`}
+            >
+              <Sparkles size={13} />
+            </button>
+          </div>
+          {commandOutput && (
+            <pre className={`${styles.commandOutput} ${commandState === 'error' ? styles.commandError : ''}`}>
+              {commandOutput}
+            </pre>
+          )}
         </div>
 
         {/* Tags */}

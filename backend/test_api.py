@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from backend import storage
 TEST_DIR = Path(tempfile.mkdtemp())
 storage.DATA_DIR = TEST_DIR
+storage.DATA_FILE = TEST_DIR / "ideas.json"
 
 from backend.main import app
 
@@ -35,7 +36,7 @@ def clean_data():
 def test_health():
     resp = client.get("/health")
     assert resp.status_code == 200
-    assert resp.json() == {"status": "ok", "version": "1.0.0"}
+    assert resp.json() == {"status": "ok", "version": "1.1.0"}
 
 
 # ── Create ──────────────────────────────────────────────────────────────────
@@ -126,6 +127,14 @@ class TestList:
         resp = client.get("/ideas/nonexistent")
         assert resp.status_code == 404
 
+    def test_active_ideas(self):
+        client.post("/ideas", json={"hook": "A", "status": "active"})
+        client.post("/ideas", json={"hook": "B", "status": "parked"})
+        resp = client.get("/ideas/active")
+        assert resp.status_code == 200
+        assert len(resp.json()) == 1
+        assert resp.json()[0]["hook"] == "A"
+
 
 # ── Update ──────────────────────────────────────────────────────────────────
 
@@ -201,3 +210,47 @@ class TestOrdering:
         all_ideas = client.get("/ideas").json()
         assert all_ideas[0]["hook"] == "Second"  # newest first
         assert all_ideas[1]["hook"] == "First"
+
+
+class TestClaude:
+    def test_expand_patches_idea_without_api_key(self):
+        idea = client.post("/ideas", json={"hook": "Expandable"}).json()
+        resp = client.post("/claude/expand", json={"ideaId": idea["id"]})
+        assert resp.status_code == 200
+        assert resp.json()["idea"]["id"] == idea["id"]
+        assert "Expansion draft" in resp.json()["raw"]
+
+    def test_scaffold_returns_brief(self):
+        idea = client.post("/ideas", json={"hook": "Scaffold me"}).json()
+        resp = client.post("/claude/scaffold", json={"ideaId": idea["id"]})
+        assert resp.status_code == 200
+        assert resp.json()["ideaId"] == idea["id"]
+        assert "Scaffold brief" in resp.json()["brief"]
+
+    def test_score_parked_empty(self):
+        resp = client.post("/claude/score", json={"daysOld": 14})
+        assert resp.status_code == 200
+        assert resp.json()["count"] == 0
+
+
+class TestCodex:
+    def test_codex_scaffold_returns_brief(self):
+        idea = client.post("/ideas", json={"hook": "Codex scaffold"}).json()
+        resp = client.post("/codex/scaffold", json={"ideaId": idea["id"]})
+        assert resp.status_code == 200
+        assert resp.json()["ideaId"] == idea["id"]
+        assert "Scaffold brief" in resp.json()["brief"]
+
+    def test_codex_plan_returns_plan(self):
+        idea = client.post("/ideas", json={"hook": "Codex plan"}).json()
+        resp = client.post("/codex/plan", json={"ideaId": idea["id"]})
+        assert resp.status_code == 200
+        assert resp.json()["ideaId"] == idea["id"]
+        assert "plan" in resp.json()
+
+    def test_codex_expand_patches_idea_without_api_key(self):
+        idea = client.post("/ideas", json={"hook": "Codex expand"}).json()
+        resp = client.post("/codex/expand", json={"ideaId": idea["id"]})
+        assert resp.status_code == 200
+        assert resp.json()["idea"]["id"] == idea["id"]
+        assert "Expansion draft" in resp.json()["raw"]
